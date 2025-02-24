@@ -16,7 +16,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     // Métodos personalizados podem ser adicionados aqui
 
     // Exemplo: Buscar pagamentos por ID do pedido
-    Payment findByOrderId(UUID orderId);
+    Optional<Payment> findByOrderId(UUID orderId);
 
     // Exemplo: Buscar pagamentos por método de pagamento
     List<Payment> findByPaymentMethod(PaymentMethod paymentMethod);
