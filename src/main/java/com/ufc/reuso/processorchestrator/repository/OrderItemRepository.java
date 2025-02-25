@@ -11,17 +11,15 @@ import java.util.UUID;
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, UUID> {
 
-    // Métodos personalizados podem ser adicionados aqui
-
-    // Exemplo: Buscar itens de pedido por ID do pedido
+    // Buscar itens de pedido por ID do pedido
     List<OrderItem> findByOrderId(UUID orderId);
 
-    // Exemplo: Buscar itens de pedido por nome do produto (ignorando maiúsculas e minúsculas)
+    // Buscar itens de pedido por nome do produto (ignorando maiúsculas e minúsculas)
     List<OrderItem> findByProductNameIgnoreCase(String productName);
 
-    // Exemplo: Buscar itens de pedido com quantidade maior que um valor específico
+    // Buscar itens de pedido com quantidade maior que um valor específico
     List<OrderItem> findByQuantityGreaterThan(Integer quantity);
 
-    // Exemplo: Buscar itens de pedido com preço unitário maior que um valor específico
+    // Buscar itens de pedido com preço unitário maior que um valor específico
     List<OrderItem> findByUnitPriceGreaterThan(BigDecimal unitPrice);
 }

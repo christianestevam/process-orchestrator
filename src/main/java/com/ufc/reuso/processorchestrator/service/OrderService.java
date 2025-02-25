@@ -51,7 +51,7 @@ public class OrderService {
 
         order.setItems(items);
 
-        // Crie e associe o pagamento (se necessário)
+        // Cria e associa o pagamento
         Payment payment = new Payment();
         payment.setOrder(order);
         payment.setPaymentMethod(orderRequest.getPaymentMethod());
@@ -59,7 +59,7 @@ public class OrderService {
         payment.setTransactionId("txn_123456"); // Defina o ID da transação
         order.setPayment(payment);
 
-        // Crie e associe a nota fiscal (se necessário)
+        // Cria e associa a nota fiscal
         Invoice invoice = new Invoice();
         invoice.setOrder(order);
         invoice.setInvoiceNumber("INV-2023-001"); // Defina o número da nota fiscal
@@ -67,7 +67,7 @@ public class OrderService {
         order.setInvoice(invoice);
 
 
-        // Mapear dados do DTO para a entidade Order (faltando implementação detalhada)
+        // Mapear dados do DTO para a entidade Order 
         order = orderRepository.save(order);
         return new OrderResponseDTO(order);
     }

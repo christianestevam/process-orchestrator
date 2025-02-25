@@ -12,17 +12,15 @@ import java.util.UUID;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
 
-    // Métodos personalizados podem ser adicionados aqui
-
-    // Exemplo: Buscar pedidos por status
+    // Buscar pedidos por status
     List<Order> findByStatus(OrderStatus status);
 
-    // Exemplo: Buscar pedidos criados após uma determinada data
+    // Buscar pedidos criados após uma determinada data
     List<Order> findByCreatedAtAfter(LocalDateTime date);
 
-    // Exemplo: Buscar pedidos por e-mail do cliente
+    // Buscar pedidos por e-mail do cliente
     List<Order> findByCustomerEmail(String customerEmail);
 
-    // Exemplo: Buscar pedidos por nome do cliente (ignorando maiúsculas e minúsculas)
+    // Buscar pedidos por nome do cliente (ignorando maiúsculas e minúsculas)
     List<Order> findByCustomerNameIgnoreCase(String customerName);
 }
