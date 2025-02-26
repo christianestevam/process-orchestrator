@@ -1,5 +1,6 @@
 package com.ufc.reuso.processorchestrator.service;
 
+import com.ufc.reuso.processorchestrator.dto.PaymentResponseDTO;
 import com.ufc.reuso.processorchestrator.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import com.ufc.reuso.processorchestrator.repository.OrderRepository;
 import com.ufc.reuso.processorchestrator.repository.PaymentRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -92,11 +94,9 @@ public class OrderService {
     }
 
     // Retornar o status do pagamento
-    public String getPaymentStatus(UUID id) {
-        Payment payment = paymentRepository.findByOrderId(id)
-                .orElseThrow(() -> new RuntimeException("Pagamento não encontrado"));
-        Order order = payment.getOrder();
-        return order.getStatus().name();
+    public PaymentResponseDTO getPaymentStatus(UUID orderId) {
+        Optional<Payment> payment = paymentRepository.findByOrderId(orderId);
+        return payment.map(PaymentResponseDTO::new).orElse(null);
     }
 
     // Retornar detalhes da nota fiscal

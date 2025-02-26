@@ -1,7 +1,6 @@
 package com.ufc.reuso.processorchestrator.controller;
 
 import java.util.UUID;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,8 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import com.ufc.reuso.processorchestrator.dto.InvoiceResponseDTO;
 import com.ufc.reuso.processorchestrator.dto.OrderRequestDTO;
 import com.ufc.reuso.processorchestrator.dto.OrderResponseDTO;
+import com.ufc.reuso.processorchestrator.dto.PaymentResponseDTO;
+import com.ufc.reuso.processorchestrator.orchestrators.ProcessOrchestrator;
 import com.ufc.reuso.processorchestrator.service.OrderService;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -20,6 +20,9 @@ public class OrderController {
 
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private ProcessOrchestrator processOrchestrator;
 
     // Criar um novo pedido
     @PostMapping
@@ -32,7 +35,7 @@ public class OrderController {
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDTO> getOrderById(@PathVariable UUID id) {
         OrderResponseDTO order = orderService.getOrderById(id);
-        return ResponseEntity.ok(order);
+        return order != null ? ResponseEntity.ok(order) : ResponseEntity.notFound().build();
     }
 
     // Listar pedidos paginados
@@ -46,21 +49,33 @@ public class OrderController {
     @GetMapping("/{id}/status")
     public ResponseEntity<String> getOrderStatus(@PathVariable UUID id) {
         String status = orderService.getOrderStatus(id);
-        return ResponseEntity.ok(status);
+        return status != null ? ResponseEntity.ok(status) : ResponseEntity.notFound().build();
     }
 
-    // Retornar o status do pagamento
+    // Retornar detalhes do pagamento
     @GetMapping("/{id}/payment")
-    public ResponseEntity<String> getPaymentStatus(@PathVariable UUID id) {
-        String paymentStatus = orderService.getPaymentStatus(id);
-        return ResponseEntity.ok(paymentStatus);
+    public ResponseEntity<PaymentResponseDTO> getPaymentStatus(@PathVariable UUID id) {
+        PaymentResponseDTO payment = orderService.getPaymentStatus(id);
+        return payment != null ? ResponseEntity.ok(payment) : ResponseEntity.notFound().build();
     }
 
     // Retornar detalhes da nota fiscal
     @GetMapping("/{id}/invoice")
     public ResponseEntity<InvoiceResponseDTO> getInvoiceDetails(@PathVariable UUID id) {
         InvoiceResponseDTO invoice = orderService.getInvoiceDetails(id);
-        return ResponseEntity.ok(invoice);
+        return invoice != null ? ResponseEntity.ok(invoice) : ResponseEntity.notFound().build();
+    }
+
+    // **Novo Endpoint**: Iniciar o processamento do pedido
+    @PostMapping("/{id}/process")
+    public ResponseEntity<String> processOrder(@PathVariable UUID id) {
+        try {
+            processOrchestrator.startOrderProcessing(id);
+            return ResponseEntity.ok("Pedido em processamento.");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
-

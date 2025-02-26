@@ -2,75 +2,98 @@ package com.ufc.reuso.processorchestrator.orchestrators;
 
 import com.ufc.reuso.processorchestrator.events.*;
 import com.ufc.reuso.processorchestrator.messaging.EventPublisher;
+import com.ufc.reuso.processorchestrator.model.Order;
+import com.ufc.reuso.processorchestrator.model.OrderStatus;
+import com.ufc.reuso.processorchestrator.repository.OrderRepository;
 
 import java.util.UUID;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProcessOrchestrator {
 
     private final EventPublisher eventPublisher;
+    private final OrderRepository orderRepository;
 
-    public ProcessOrchestrator(EventPublisher eventPublisher) {
+    public ProcessOrchestrator(EventPublisher eventPublisher, OrderRepository orderRepository) {
         this.eventPublisher = eventPublisher;
+        this.orderRepository = orderRepository;
     }
 
-    // Inicia o fluxo de processamento do pedido
+    @Transactional
     public void startOrderProcessing(UUID orderId) {
-        System.out.println("Iniciando o processamento do pedido: " + orderId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
 
-        // Publica evento de validação de estoque
-        StockValidatedEvent stockEvent = new StockValidatedEvent(orderId, false);
-        eventPublisher.publishEvent("stock-validation-queue", stockEvent);
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new RuntimeException("Pedido já processado");
+        }
+
+        System.out.println("Iniciando o processamento do pedido: " + orderId);
+        order.setStatus(OrderStatus.VALIDATING_STOCK);
+        orderRepository.save(order);
+
+        // Publicar evento para validação de estoque
+        eventPublisher.publishEvent("order.stock.validation", new StockValidatedEvent(orderId, false));
     }
 
-    // Escuta o evento de estoque validado
-    @RabbitListener(queues = "stock-validation-queue")
+    @RabbitListener(queues = "order.stock.validated")
     public void handleStockValidated(StockValidatedEvent event) {
+        Order order = orderRepository.findById(event.getOrderId())
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
         if (event.isStockAvailable()) {
             System.out.println("Estoque validado para o pedido: " + event.getOrderId());
 
-            // Publica evento de processamento de pagamento
-            PaymentProcessedEvent paymentEvent = new PaymentProcessedEvent(event.getOrderId(), false);
-            eventPublisher.publishEvent("payment-processing-queue", paymentEvent);
+            order.setStatus(OrderStatus.PAYMENT_PROCESSING);
+            orderRepository.save(order);
+
+            // Publicar evento para processamento de pagamento
+            eventPublisher.publishEvent("order.payment.processing", new PaymentProcessedEvent(event.getOrderId(), false));
         } else {
             System.out.println("Falha na validação de estoque para o pedido: " + event.getOrderId());
-            retry("stock-validation-queue", event);
+            order.setStatus(OrderStatus.FAILED);
+            orderRepository.save(order);
         }
     }
 
-    // Escuta o evento de pagamento processado
-    @RabbitListener(queues = "payment-processing-queue")
+    @RabbitListener(queues = "order.payment.processing")
     public void handlePaymentProcessed(PaymentProcessedEvent event) {
+        Order order = orderRepository.findById(event.getOrderId())
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
         if (event.isPaymentSuccessful()) {
             System.out.println("Pagamento confirmado para o pedido: " + event.getOrderId());
 
-            // Publica evento de geração de nota fiscal
-            InvoiceGeneratedEvent invoiceEvent = new InvoiceGeneratedEvent(event.getOrderId(), false, null);
-            eventPublisher.publishEvent("invoice-generation-queue", invoiceEvent);
+            order.setStatus(OrderStatus.INVOICE_GENERATION);
+            orderRepository.save(order);
+
+            // Publicar evento para geração de nota fiscal
+            eventPublisher.publishEvent("order.invoice.generation", new InvoiceGeneratedEvent(event.getOrderId(), false, null));
         } else {
             System.out.println("Falha no pagamento do pedido: " + event.getOrderId());
-            retry("payment-processing-queue", event);
+            order.setStatus(OrderStatus.FAILED);
+            orderRepository.save(order);
         }
     }
 
-    // Escuta o evento de nota fiscal gerada
-    @RabbitListener(queues = "invoice-generation-queue")
+    @RabbitListener(queues = "order.invoice.generation")
     public void handleInvoiceGenerated(InvoiceGeneratedEvent event) {
+        Order order = orderRepository.findById(event.getOrderId())
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado"));
+
         if (event.isInvoiceGenerated()) {
             System.out.println("Nota fiscal gerada com sucesso! Número: " + event.getInvoiceNumber());
+
+            order.setStatus(OrderStatus.COMPLETED);
+            orderRepository.save(order);
         } else {
             System.out.println("Falha ao gerar nota fiscal para o pedido: " + event.getOrderId());
-            retry("invoice-generation-queue", event);
+            order.setStatus(OrderStatus.FAILED);
+            orderRepository.save(order);
         }
-    }
-
-    // Estratégia de retry simples
-    private void retry(String queue, Object event) {
-        System.out.println("Tentando novamente o processamento em " + queue);
-        eventPublisher.publishEvent(queue, event);
     }
 }

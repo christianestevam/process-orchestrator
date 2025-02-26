@@ -12,7 +12,7 @@ public class EventPublisher {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void publishEvent(String queueName, Object event) {
-        rabbitTemplate.convertAndSend(queueName, event);
+    public void publishEvent(String routingKey, Object event) {
+        rabbitTemplate.convertAndSend("order.exchange", routingKey, event);
     }
 }
